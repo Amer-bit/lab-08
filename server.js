@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 4000;
 const app = express();
 //////////////Connect to PSQL using the provided link in .env/////////////////////
 const client = new pg.Client(process.env.DATABASE_URL) // pg is constructor function which have client method
-client.on('error', error => { throw new Error(error) });
+// client.on('error', error => { throw new Error(error) });
 
 ////////////////////giving permission to connect to the server//////////////////////////
 
@@ -31,15 +31,22 @@ app.get('/trails', trailsHandler);
 
 function LocationHandler(req, res) {
     let cityName = req.query.city;
-    let SQL = ' SELECT * FROM citylocation WHERE city=$1;'
+
+    let SQL = 'SELECT * FROM citylocation WHERE search_query=$1;'
     let safeValue = [cityName];
+     console.log('ciry1', cityName);
+   
     client.query(SQL, safeValue)
         .then(result => {
-            console.log('database result',
-                result);
-            if (result.rows.length > 0) {
+            if (result.rowCount > 0) {
+
+                console.log('hello1');
+console.log(result.rows[0]);
+
                 res.status(200).json(result.rows[0])
+
             } else {
+                
                 console.log('hey');
 
                 superagent(`https://eu1.locationiq.com/v1/search.php?key=${process.env.Location_API_KEY}&q=${cityName}&format=json`)
@@ -49,15 +56,16 @@ function LocationHandler(req, res) {
                         const locationDataFromApi = locationApiRes.body;
                         let reformingApiData = new Location(cityName, locationDataFromApi);
 
-                        const SQL = 'INSERT INTO citylocation(city,search,longitude,latitude) VALUES ($1,$2,$3,$4) RETURNING *;'
+                        const SQL = 'INSERT INTO citylocation(search_query,searchcity,latitude,longitude) VALUES ($1,$2,$3,$4) RETURNING *;'
                         let objectValues = Object.values(reformingApiData);
-                        console.log(objectValues);
+                         console.log(objectValues);
                         
                         client.query(SQL, objectValues)
                         .then(results => {
-                            reformingApiData.id = results.rows[0].id
+
                             res.status(200).json(reformingApiData);
                         })
+                            .catch(error =>{errorhandler(req,res,error)})
 
                     })
                    
@@ -69,26 +77,23 @@ function LocationHandler(req, res) {
 }
 
 function weatherHandler(req, res) {
-    const city = req.query.city;
-    
-superagent(`https://api.weatherbit.io/v2.0/forecast/daily?city=${city/*or we can use but it's not working req.query.search_query*/}&maxDistance=500&key=${process.env.WEATHER_API_KEY}`)
+    const city = req.query.search_query;
+    console.log('city',req.query);
+superagent(`https://api.weatherbit.io/v2.0/forecast/daily?city=${city}&maxDistance=500&key=${process.env.WEATHER_API_KEY}`)
         .then((apiResponse) => {
-            // console.log(apiResponse);
 
             let weatherData = apiResponse.body.data.map((value) => {
-                //   console.log(value);
                 return new Weather(value);
             })
             res.status(200).json(weatherData);
         })
-        .catch(error => { errorHandler(error, req, res) })
+        .catch(error => { errorhandler( req, res, error) })
 }
 
 
 function trailsHandler(req, res) {
     // let lon = req.params.longitude
     // var fullUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
-    // console.log(req.query);
 
     superagent(`https://www.hikingproject.com/data/get-trails?lat=${req.query.latitude}&lon=${req.query.longitude}&maxDistance=500&key=${process.env.TRAIL_API_KEY}`)
         .then((trailsApiResponse) => {
@@ -99,13 +104,13 @@ function trailsHandler(req, res) {
             })
             res.status(200).json(trailsData);
         })
-        .catch(error => { errorHandler(error, req, res) })
+            .catch(error => { errorhandler( req, res, error) })
 }
 
 
 ////////////////Constructors//////////////////
 function Location(city, locationDataFromApi) {
-    this.location = city;
+    this.search_query = city;
     this.formatted_query = locationDataFromApi[0].display_name;
     this.latitude = locationDataFromApi[0].lat;
     this.longitude = locationDataFromApi[0].lon;
@@ -130,6 +135,7 @@ function Trails(data) {
 }
 
 function errorhandler(req, res, error) {
+  
     res.status(500).json(error);
 };
 
