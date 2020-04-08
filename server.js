@@ -13,7 +13,7 @@ const app = express();
 
 ////////////////////giving permission to connect to the server//////////////////////////
 app.use(cors());
-
+///////////////////////////////////////////////////////////
 const PORT = process.env.PORT || 4000;
 //////////////Connect to PSQL using the provided link in .env/////////////////////
 const client = new pg.Client(process.env.DATABASE_URL) // pg is constructor function which have client method
@@ -34,21 +34,15 @@ function LocationHandler(req, res) {
 
     let SQL = 'SELECT * FROM citylocation WHERE search_query=$1;'
     let safeValue = [cityName];
-     console.log('ciry1', cityName);
-   
+     
     client.query(SQL, safeValue)
         .then(result => {
             if (result.rowCount > 0) {
 
-                console.log('hello1');
-console.log(result.rows[0]);
-
                 res.status(200).json(result.rows[0])
 
             } else {
-                
-                console.log('hey');
-
+            
                 superagent(`https://eu1.locationiq.com/v1/search.php?key=${process.env.Location_API_KEY}&q=${cityName}&format=json`)
 
                     .then((locationApiRes) => {
@@ -58,7 +52,6 @@ console.log(result.rows[0]);
 
                         const SQL = 'INSERT INTO citylocation(search_query,searchcity,latitude,longitude) VALUES ($1,$2,$3,$4) RETURNING *;'
                         let objectValues = Object.values(reformingApiData);
-                         console.log(objectValues);
                         
                         client.query(SQL, objectValues)
                         .then(results => {
@@ -78,7 +71,7 @@ console.log(result.rows[0]);
 
 function weatherHandler(req, res) {
     const city = req.query.search_query;
-    console.log('city',req.query);
+   
 superagent(`https://api.weatherbit.io/v2.0/forecast/daily?city=${city}&maxDistance=500&key=${process.env.WEATHER_API_KEY}`)
         .then((apiResponse) => {
 
