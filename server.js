@@ -7,18 +7,18 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const superagent = require('superagent')
-
 const pg = require('pg');
-const PORT = process.env.PORT || 4000;
 ///////////////initilizing the server///////////////
 const app = express();
+
+////////////////////giving permission to connect to the server//////////////////////////
+app.use(cors());
+
+const PORT = process.env.PORT || 4000;
 //////////////Connect to PSQL using the provided link in .env/////////////////////
 const client = new pg.Client(process.env.DATABASE_URL) // pg is constructor function which have client method
 // client.on('error', error => { throw new Error(error) });
 
-////////////////////giving permission to connect to the server//////////////////////////
-
-app.use(cors());
 
 ///////////////////////////Route Definition////////////////////////////////////////////
 
